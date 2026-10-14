@@ -1,11 +1,8 @@
 // FILE: scripts/auto-marketer.mjs
-// Berjalan otomatis di Node.js v20+ tanpa perlu konfigurasi Secrets tambahan
-
 const CUSTOM_API_KEY = "sk-gw-BiwqMbbLTcO4f6sB7eec63HrRkakIk2x5Du3oIL71Fk";
-const DEVTO_API_KEY = process.env.DEVTO_API_KEY || "buPhbULU8HNAfj9UYrM4sYJM"; // Masukkan jika belum di-set di GitHub Secrets
-const RAPIDAPI_URL = process.env.RAPIDAPI_URL || "https://rapidapi.com/tezarps/api/safe-prompt-ai-firewall-and-pii-redactor";
+const DEVTO_API_KEY = "buPhbULU8HNAfj9UYrM4sYJM";
+const RAPIDAPI_URL = "https://rapidapi.com/tezarps/api/safe-prompt-ai-firewall-and-pii-redactor";
 
-// Kombinasi Matriks Otomatis (Menghasilkan 140+ Topik Unik Secara Deterministik Berdasarkan Tanggal)
 const frameworks = [
   "Next.js App Router", "Python FastAPI", "Node.js Express", "LangChain.js",
   "Laravel PHP", "Go (Golang)", "Django REST Framework", "React & Vercel AI SDK",
@@ -50,7 +47,7 @@ Requirements:
 
   console.log(`Generating article for: ${angle} | ${framework} | ${industry}...`);
 
-  // Panggil Custom API
+  // Panggil Custom API nutaraline.co.uk
   const apiRes = await fetch(
     "https://nutaraline.co.uk/v1/chat/completions",
     {
