@@ -1,14 +1,9 @@
 // FILE: scripts/auto-marketer.mjs
-// Berjalan otomatis di Node.js v20+ tanpa perlu install library tambahan
+// Berjalan otomatis di Node.js v20+ tanpa perlu konfigurasi Secrets tambahan
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const DEVTO_API_KEY = process.env.DEVTO_API_KEY;
-const RAPIDAPI_URL = process.env.RAPIDAPI_URL || "https://rapidapi.com/YOUR_USERNAME/api/safeprompt-pii-shield";
-
-if (!GEMINI_API_KEY || !DEVTO_API_KEY) {
-  console.error("Missing GEMINI_API_KEY or DEVTO_API_KEY in GitHub Secrets!");
-  process.exit(1);
-}
+const CUSTOM_API_KEY = "sk-gw-BiwqMbbLTcO4f6sB7eec63HrRkakIk2x5Du3oIL71Fk";
+const DEVTO_API_KEY = process.env.DEVTO_API_KEY || "buPhbULU8HNAfj9UYrM4sYJM"; // Masukkan jika belum di-set di GitHub Secrets
+const RAPIDAPI_URL = process.env.RAPIDAPI_URL || "https://rapidapi.com/tezarps/api/safe-prompt-ai-firewall-and-pii-redactor";
 
 // Kombinasi Matriks Otomatis (Menghasilkan 140+ Topik Unik Secara Deterministik Berdasarkan Tanggal)
 const frameworks = [
@@ -32,7 +27,6 @@ const angles = [
 ];
 
 async function generateAndPublish() {
-  // Pilih topik unik berdasarkan minggu/hari agar tidak pernah duplikat
   const daySeed = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
   const framework = frameworks[daySeed % frameworks.length];
   const industry = industries[(daySeed * 3) % industries.length];
@@ -56,43 +50,35 @@ Requirements:
 
   console.log(`Generating article for: ${angle} | ${framework} | ${industry}...`);
 
-  // 1. Panggil Gemini API dengan sistem Auto-Retry (Coba ulang otomatis jika server sibuk 503)
-  let geminiData = null;
-  let success = false;
-
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    console.log(`Attempt ${attempt} calling Gemini API...`);
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: topicPrompt }] }],
-          generationConfig: { temperature: 0.7 }
-        })
-      }
-    );
-
-    geminiData = await geminiRes.json();
-    if (geminiRes.ok && geminiData?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      success = true;
-      break;
+  // Panggil Custom API
+  const apiRes = await fetch(
+    "https://nutaraline.co.uk/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${CUSTOM_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: topicPrompt }],
+        temperature: 0.7
+      })
     }
-    console.log(`Server busy or error, waiting 5 seconds before retry...`);
-    await new Promise(resolve => setTimeout(resolve, 5000));
+  );
+
+  const apiData = await apiRes.json();
+  const rawOutput = apiData?.choices?.[0]?.message?.content;
+
+  if (!rawOutput) {
+    throw new Error(`Failed to generate content from API: ${JSON.stringify(apiData)}`);
   }
 
-  if (!success) {
-    throw new Error(`Failed to generate content from Gemini after 3 attempts: ${JSON.stringify(geminiData)}`);
-  }
-
-  const rawOutput = geminiData.candidates[0].content.parts[0].text;
   const lines = rawOutput.trim().split("\n");
   const cleanTitle = lines[0].replace(/^#+\s*/, "").replace(/^"|"$/g, "").trim();
   const markdownBody = lines.slice(1).join("\n").trim();
 
-  // 2. Publikasikan Otomatis ke Dev.to API
+  // Publikasikan Otomatis ke Dev.to API
   console.log(`Publishing to Dev.to: "${cleanTitle}"...`);
   const devtoRes = await fetch("https://dev.to/api/articles", {
     method: "POST",
