@@ -56,26 +56,38 @@ Requirements:
 
   console.log(`Generating article for: ${angle} | ${framework} | ${industry}...`);
 
-  // 1. Panggil Gemini API (Free Tier)
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: topicPrompt }] }],
-        generationConfig: { temperature: 0.7 }
-      })
+  // 1. Panggil Gemini API dengan sistem Auto-Retry (Coba ulang otomatis jika server sibuk 503)
+  let geminiData = null;
+  let success = false;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    console.log(`Attempt ${attempt} calling Gemini API...`);
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: topicPrompt }] }],
+          generationConfig: { temperature: 0.7 }
+        })
+      }
+    );
+
+    geminiData = await geminiRes.json();
+    if (geminiRes.ok && geminiData?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      success = true;
+      break;
     }
-  );
-
-  const geminiData = await geminiRes.json();
-  const rawOutput = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!rawOutput) {
-    throw new Error(`Failed to generate content from Gemini: ${JSON.stringify(geminiData)}`);
+    console.log(`Server busy or error, waiting 5 seconds before retry...`);
+    await new Promise(resolve => setTimeout(resolve, 5000));
   }
 
+  if (!success) {
+    throw new Error(`Failed to generate content from Gemini after 3 attempts: ${JSON.stringify(geminiData)}`);
+  }
+
+  const rawOutput = geminiData.candidates[0].content.parts[0].text;
   const lines = rawOutput.trim().split("\n");
   const cleanTitle = lines[0].replace(/^#+\s*/, "").replace(/^"|"$/g, "").trim();
   const markdownBody = lines.slice(1).join("\n").trim();
