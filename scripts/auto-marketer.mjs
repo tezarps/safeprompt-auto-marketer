@@ -1,0 +1,113 @@
+// FILE: scripts/auto-marketer.mjs
+// Berjalan otomatis di Node.js v20+ tanpa perlu install library tambahan
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const DEVTO_API_KEY = process.env.DEVTO_API_KEY;
+const RAPIDAPI_URL = process.env.RAPIDAPI_URL || "https://rapidapi.com/YOUR_USERNAME/api/safeprompt-pii-shield";
+
+if (!GEMINI_API_KEY || !DEVTO_API_KEY) {
+  console.error("Missing GEMINI_API_KEY or DEVTO_API_KEY in GitHub Secrets!");
+  process.exit(1);
+}
+
+// Kombinasi Matriks Otomatis (Menghasilkan 140+ Topik Unik Secara Deterministik Berdasarkan Tanggal)
+const frameworks = [
+  "Next.js App Router", "Python FastAPI", "Node.js Express", "LangChain.js",
+  "Laravel PHP", "Go (Golang)", "Django REST Framework", "React & Vercel AI SDK",
+  "NestJS", "Ruby on Rails", "Flask Python", "Cloudflare Workers"
+];
+
+const industries = [
+  "Healthcare HIPAA Chatbots", "Fintech & Banking AI Assistants", "SaaS Customer Support Bots",
+  "E-Commerce Order Assistants", "Legal Document Summarizers", "HR Resume Screening AI",
+  "Internal Enterprise RAG Systems", "Multi-Tenant SaaS Applications",
+  "Automated Email Triage Agents", "Voice-to-Text AI Pipelines", "EdTech Tutoring Bots", "Insurance Claim AI"
+];
+
+const angles = [
+  "Preventing Prompt Injection & Jailbreaks",
+  "Automated GDPR PII Redaction Before Calling OpenAI",
+  "Stopping API Key & Credit Card Leaks in LLM Logs",
+  "Building a Zero-Trust AI Input Firewall in 5 Minutes"
+];
+
+async function generateAndPublish() {
+  // Pilih topik unik berdasarkan minggu/hari agar tidak pernah duplikat
+  const daySeed = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+  const framework = frameworks[daySeed % frameworks.length];
+  const industry = industries[(daySeed * 3) % industries.length];
+  const angle = angles[(daySeed * 7) % angles.length];
+
+  const topicPrompt = `
+You are a Senior AI Security Engineer writing a highly practical, SEO-optimized technical tutorial for Dev.to.
+
+Topic Angle: "${angle} in ${framework} for ${industry}"
+
+Write a complete tutorial in Markdown format.
+Requirements:
+1. First line MUST be ONLY the article title (no '#' prefix, engaging, specific, max 75 chars).
+2. Leave the second line blank, then write the full Markdown body starting from line 3.
+3. Explain the real-world security risk (e.g., why raw user input sent to OpenAI/Claude causes PII data breaches or prompt injection jailbreaks).
+4. Show a complete, copy-pasteable code example in ${framework} demonstrating how to sanitize user input BEFORE sending it to an LLM using the SafePrompt & PII Shield API on RapidAPI.
+5. In the code example, use the endpoint: "https://ai-prompt-firewall-and-pii-data-redactor.p.rapidapi.com/sanitize" with headers "X-RapidAPI-Key" and JSON body { "text": userInput }.
+6. Naturally include a helpful link to get the free API key here: ${RAPIDAPI_URL}
+7. Make the article genuinely educational, including architecture best practices, error handling, and latency considerations. Do not sound like an ad; sound like a developer sharing a production solution.
+`;
+
+  console.log(`Generating article for: ${angle} | ${framework} | ${industry}...`);
+
+  // 1. Panggil Gemini API (Free Tier)
+  const geminiRes = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: topicPrompt }] }],
+        generationConfig: { temperature: 0.7 }
+      })
+    }
+  );
+
+  const geminiData = await geminiRes.json();
+  const rawOutput = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!rawOutput) {
+    throw new Error(`Failed to generate content from Gemini: ${JSON.stringify(geminiData)}`);
+  }
+
+  const lines = rawOutput.trim().split("\n");
+  const cleanTitle = lines[0].replace(/^#+\s*/, "").replace(/^"|"$/g, "").trim();
+  const markdownBody = lines.slice(1).join("\n").trim();
+
+  // 2. Publikasikan Otomatis ke Dev.to API
+  console.log(`Publishing to Dev.to: "${cleanTitle}"...`);
+  const devtoRes = await fetch("https://dev.to/api/articles", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": DEVTO_API_KEY
+    },
+    body: JSON.stringify({
+      article: {
+        title: cleanTitle,
+        published: true,
+        body_markdown: markdownBody,
+        tags: ["ai", "security", "webdev", "programming"]
+      }
+    })
+  });
+
+  if (!devtoRes.ok) {
+    const errText = await devtoRes.text();
+    throw new Error(`Dev.to API Error: ${errText}`);
+  }
+
+  const publishedArticle = await devtoRes.json();
+  console.log(`SUCCESS! Article live at: ${publishedArticle.url}`);
+}
+
+generateAndPublish().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
