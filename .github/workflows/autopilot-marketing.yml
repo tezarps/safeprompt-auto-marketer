@@ -1,0 +1,25 @@
+name: Autonomous AI Developer Marketing Engine
+
+on:
+  schedule:
+    - cron: '0 14 * * 2,5'
+  workflow_dispatch:
+
+jobs:
+  publish-technical-tutorial:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run AI Content Generator & Publisher
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          RAPIDAPI_URL: ${{ secrets.RAPIDAPI_URL }}
+        run: node scripts/auto-marketer.mjs
