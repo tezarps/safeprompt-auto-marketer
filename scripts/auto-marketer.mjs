@@ -57,7 +57,7 @@ Requirements:
         "Authorization": `Bearer ${CUSTOM_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "deepseek-v4.1",
         messages: [{ role: "user", content: topicPrompt }],
         temperature: 0.7
       })
