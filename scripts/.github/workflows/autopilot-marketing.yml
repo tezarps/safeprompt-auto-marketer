@@ -1,0 +1,27 @@
+# FILE: .github/workflows/autopilot-marketing.yml
+name: Autonomous AI Developer Marketing Engine
+
+on:
+  schedule:
+    # Menyala otomatis setiap hari Selasa dan Jumat jam 14:00 UTC (21:00 WIB)
+    - cron: '0 14 * * 2,5'
+  workflow_dispatch: # Tombol manual jika Anda ingin mengetesnya langsung hari ini
+
+jobs:
+  publish-technical-tutorial:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run AI Content Generator & Publisher
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          RAPIDAPI_URL: ${{ secrets.RAPIDAPI_URL }}
+        run: node scripts/auto-marketer.mjs
