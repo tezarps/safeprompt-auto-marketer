@@ -57,7 +57,7 @@ Requirements:
         "Authorization": `Bearer ${CUSTOM_API_KEY}`
       },
       body: JSON.stringify({
-        model: "deepseek-v4.1",
+        model: "muse-spark-1.3",
         messages: [{ role: "user", content: topicPrompt }],
         temperature: 0.7
       })
